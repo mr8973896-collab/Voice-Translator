@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مترجم الفيديوهات - VoxaTube</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #00ffff;
+            --primary-dark: #00cccc;
+            --secondary: #0088ff;
+            --accent: #00ffff;
+            --bg-dark: #000010;
+            --bg-card: rgba(255, 255, 255, 0.06);
+            --text-main: #ffffff;
+            --text-muted: #cccccc;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --radius: 24px;
+            --shadow: 0 12px 40px rgba(0, 255, 255, 0.25);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #03008a; }
+        ::-webkit-scrollbar-thumb { background: #00ffff; border-radius: 10px; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #000010, #03008a 60%, #000);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0,255,255,0.15), transparent 70%);
+            z-index: -1;
+            animation: bgMove 15s infinite linear;
+        }
+
+        @keyframes bgMove {
+            0% { transform: translate(-50%, -50%); }
+            100% { transform: translate(-25%, -25%); }
+        }
+
+        h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+        .header { text-align: center; padding: 60px 20px 40px; }
+
+        .logo { display: inline-flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+
+        .logo-icon {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px; display: flex; align-items: center;
+            justify-content: center; font-size: 32px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.7);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ffffff, #00ffff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: var(--text-muted); font-size: 1.1rem; max-width: 500px; margin: 0 auto; }
+
+        .main-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius); padding: 40px;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            box-shadow: var(--shadow); margin-bottom: 30px;
+        }
+
+        .input-section { margin-bottom: 30px; }
+
+        .input-label { display: block; margin-bottom: 12px; font-weight: 600; color: var(--text-main); font-size: 1.1rem; }
+
+        .input-wrapper { position: relative; display: flex; gap: 12px; }
+
+        .url-input {
+            flex: 1; padding: 18px 24px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(0, 255, 255, 0.4);
+            border-radius: 16px; color: white; font-size: 1rem;
+            font-family: 'Cairo', sans-serif; outline: none;
+            transition: var(--transition);
+        }
+
+        .url-input:focus {
+            border-color: var(--primary);
+            background: rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+        }
+
+        .url-input::placeholder { color: var(--text-muted); }
+
+        .translate-btn {
+            padding: 18px 32px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #000; font-weight: 700; border-radius: 16px; border: none;
+            cursor: pointer; font-size: 1rem; font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            white-space: nowrap;
+        }
+
+        .translate-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
+        }
+
+        .translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .video-preview { margin-bottom: 30px; display: none; }
+        .video-preview.active { display: block; animation: fadeIn 0.5s ease-out; }
+
+        .video-container {
+            position: relative; padding-bottom: 56.25%; height: 0;
+            overflow: hidden; border-radius: 16px; background: #000;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            border: 2px solid rgba(0, 255, 255, 0.4);
+        }
+
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+
+        .progress-section {
+            display: none; padding: 30px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 16px; margin-bottom: 30px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .progress-section.active { display: block; animation: fadeIn 0.5s ease-out; }
+
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+        .progress-title { font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+
+        .progress-percentage { font-weight: 700; color: var(--primary); font-size: 1.2rem; }
+
+        .progress-bar-bg { width: 100%; height: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 30px; overflow: hidden; }
+
+        .progress-bar-fill {
+            height: 100%; border-radius: 30px; width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+
+        .progress-message {
+            text-align: center; margin-top: 20px; color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+
+        .spinner {
+            width: 24px; height: 24px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-section { display: none; animation: fadeIn 0.5s ease-out; }
+        .result-section.active { display: block; }
+
+        .success-badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 12px 24px;
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 50px; color: var(--success);
+            font-weight: 600; margin-bottom: 25px;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .success-badge svg { width: 24px; height: 24px; }
+
+        .audio-player-wrapper {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 16px; padding: 25px; margin-bottom: 25px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .audio-player-wrapper audio { width: 100%; height: 50px; border-radius: 12px; }
+
+        .action-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
+
+        .download-btn {
+            flex: 1; min-width: 200px; padding: 16px 24px;
+            background: var(--success); color: white; font-weight: 700;
+            border-radius: 16px; border: none; cursor: pointer;
+            font-size: 1rem; font-family: 'Cairo', sans-serif;
+            transition: var(--transition); display: flex;
+            align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+        }
+
+        .download-btn:hover { background: #16a34a; transform: translateY(-3px); box-shadow: 0 0 35px rgba(34, 197, 94, 0.6); }
+        .download-btn.downloading { background: #15803d; cursor: wait; pointer-events: none; }
+
+        .new-translation-btn {
+            flex: 1; min-width: 200px; padding: 16px 24px;
+            background: rgba(0, 255, 255, 0.15); color: var(--text-main);
+            font-weight: 600; border-radius: 16px;
+            border: 2px solid rgba(0, 255, 255, 0.4);
+            cursor: pointer; font-size: 1rem; font-family: 'Cairo', sans-serif;
+            transition: var(--transition); display: flex;
+            align-items: center; justify-content: center; gap: 10px;
+        }
+
+        .new-translation-btn:hover { background: rgba(0, 255, 255, 0.25); border-color: var(--primary); }
+
+        .error-section { display: none; border-radius: 20px; margin-bottom: 25px; overflow: hidden; }
+        .error-section.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+        .error-inner { padding: 25px 28px; display: flex; gap: 18px; align-items: flex-start; }
+
+        .error-section.type-general      { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3); }
+        .error-section.type-no-transcript { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); }
+        .error-section.type-too-long      { background: rgba(0,255,255,0.1); border: 1px solid rgba(0,255,255,0.3); }
+
+        .error-section.type-general .error-icon-wrap      { background: rgba(239,68,68,0.2);   color: #ef4444; }
+        .error-section.type-no-transcript .error-icon-wrap { background: rgba(245,158,11,0.2); color: #f59e0b; }
+        .error-section.type-too-long .error-icon-wrap      { background: rgba(0,255,255,0.2); color: #00ffff; }
+
+        .error-section.type-general .error-title      { color: #ef4444; }
+        .error-section.type-no-transcript .error-title { color: #f59e0b; }
+        .error-section.type-too-long .error-title      { color: #00ffff; }
+
+        .error-icon-wrap {
+            width: 46px; height: 46px; min-width: 46px;
+            border-radius: 12px; display: flex;
+            align-items: center; justify-content: center; font-size: 22px;
+        }
+
+        .error-body { flex: 1; }
+        .error-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; }
+        .error-desc  { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; }
+
+        .error-tip {
+            margin-top: 14px; padding: 12px 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px; font-size: 0.9rem; color: var(--text-muted);
+        }
+
+        .error-tip strong { color: var(--text-main); }
+
+        .footer {
+            text-align: center; padding: 30px 20px; color: var(--text-muted);
+            border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.8rem; }
+            .main-card { padding: 25px; }
+            .input-wrapper { flex-direction: column; }
+            .translate-btn { width: 100%; }
+            .action-buttons { flex-direction: column; }
+            .download-btn, .new-translation-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-video"></i>
+            </div>
+            <h1>مترجم <span>الفيديوهات</span></h1>
+        </div>
+        <p>حوّل أي فيديو يوتيوب إلى صوت عربي بجودة عالية وبضغطة زر واحدة</p>
+    </header>
+
+    <div class="container">
+        <div class="main-card">
+
+            <div class="input-section">
+                <label class="input-label">📺 رابط فيديو اليوتيوب</label>
+                <div class="input-wrapper">
+                    <input type="text" id="video-url" class="url-input"
+                        placeholder="الصق رابط الفيديو هنا... https://www.youtube.com/watch?v=...">
+                    <button id="translate-btn" class="translate-btn" onclick="processVideo()" disabled>
+                        🚀 ابدأ الترجمة
+                    </button>
+                </div>
+            </div>
+
+            <div class="video-preview" id="video-preview">
+                <div class="video-container">
+                    <iframe id="youtube-iframe" src="" title="YouTube video player" allowfullscreen></iframe>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <div class="error-section" id="error-section">
+                <div class="error-inner">
+                    <div class="error-icon-wrap" id="error-icon">⚠️</div>
+                    <div class="error-body">
+                        <div class="error-title" id="error-title">حدث خطأ</div>
+                        <div class="error-desc"  id="error-desc"></div>
+                        <div class="error-tip"   id="error-tip" style="display:none"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress-section" id="progress-section">
+                <div class="progress-header">
+                    <span class="progress-title">
+                        <span class="spinner"></span>
+                        جاري معالجة الفيديو...
+                    </span>
+                    <span class="progress-percentage" id="progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progress-bar"></div>
+                </div>
+                <div class="progress-message">
+                    <span>⏳ يرجى الانتظار، قد تستغرق العملية بضع دقائق</span>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div class="result-section" id="result-section">
+                <div class="success-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    <span>تمت الترجمة بنجاح!</span>
+                </div>
+
+                <div class="audio-player-wrapper">
+                    <audio id="audio-player" controls>
+                        <source src="" type="audio/mpeg">
+                        متصفحك لا يدعم تشغيل الصوت
+                    </audio>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="download-btn" id="download-btn" onclick="downloadAudio()">
+                        <i class="fas fa-download"></i> تحميل ملف MP3
+                    </button>
+                    <button class="new-translation-btn" onclick="resetApp()">
+                        <i class="fas fa-redo"></i> ترجمة فيديو جديد
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>© 2025 مترجم الفيديوهات - جميع الحقوق محفوظة</p>
+    </footer>
+
+    <script>
+        // ── إعدادات الـ Webhook ──────────────────────────────────
+        const WEBHOOK_URL    = 'https://heshamabdelfadeel123.app.n8n.cloud/webhook/d7a2a8cc-62f4-4830-a902-7b14d7e7be96';
+        const WEBHOOK_SECRET = 'SafePass123!@#';
+
+        const videoInput         = document.getElementById('video-url');
+        const translateBtn       = document.getElementById('translate-btn');
+        const videoPreview       = document.getElementById('video-preview');
+        const youtubeIframe      = document.getElementById('youtube-iframe');
+        const errorSection       = document.getElementById('error-section');
+        const errorIcon          = document.getElementById('error-icon');
+        const errorTitle         = document.getElementById('error-title');
+        const errorDesc          = document.getElementById('error-desc');
+        const errorTip           = document.getElementById('error-tip');
+        const progressSection    = document.getElementById('progress-section');
+        const progressBar        = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const resultSection      = document.getElementById('result-section');
+        const audioPlayer        = document.getElementById('audio-player');
+        const downloadBtn        = document.getElementById('download-btn');
+
+        let currentAudioBlob = null;
+        let currentAudioUrl  = '';
+
+        // ── Input ───────────────────────────────────────────────
+        videoInput.addEventListener('input', () => {
+            const url = videoInput.value.trim();
+            const isValid = isValidYouTubeUrl(url);
+            translateBtn.disabled = !isValid;
+            if (isValid) loadVideoPreview(url);
+            else videoPreview.classList.remove('active');
+            errorSection.classList.remove('active');
+        });
+
+        function isValidYouTubeUrl(url) {
+            return [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+                /youtube\.com\/shorts\/([^&\n?#]+)/
+            ].some(p => p.test(url));
+        }
+
+        function extractVideoId(url) {
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+                /youtube\.com\/shorts\/([^&\n?#]+)/
+            ];
+            for (const p of patterns) {
+                const m = url.match(p);
+                if (m && m[1]) return m[1];
+            }
+            return null;
+        }
+
+        function loadVideoPreview(url) {
+            const id = extractVideoId(url);
+            if (id) {
+                youtubeIframe.src = `https://www.youtube.com/embed/${id}`;
+                videoPreview.classList.add('active');
+            }
+        }
+
+        // ── Error helpers ────────────────────────────────────────
+        function showError(type, title, desc, tip = '') {
+            errorSection.className = 'error-section active type-' + type;
+            const icons = { general: '❌', 'no-transcript': '📝', 'too-long': '⏱️' };
+            errorIcon.textContent  = icons[type] || '⚠️';
+            errorTitle.textContent = title;
+            errorDesc.textContent  = desc;
+            if (tip) { errorTip.innerHTML = tip; errorTip.style.display = 'block'; }
+            else { errorTip.style.display = 'none'; }
+            errorSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function classifyError(message, status) {
+            const msg = (message || '').toLowerCase();
+            if (
+                msg.includes('transcript') || msg.includes('subtitle') ||
+                msg.includes('captions')   || msg.includes('no transcript') ||
+                status === 404
+            ) return 'no-transcript';
+
+            if (
+                msg.includes('too long')        || msg.includes('maximum context') ||
+                msg.includes('token')           || msg.includes('max_tokens') ||
+                msg.includes('context length')  || msg.includes('rate limit') ||
+                msg.includes('timeout')         ||
+                status === 413 || status === 429 || status === 504
+            ) return 'too-long';
+
+            return 'general';
+        }
+
+        function handleErrorByType(type, rawMsg, status) {
+            if (type === 'no-transcript') {
+                showError(
+                    'no-transcript',
+                    'الفيديو ده مفيش له ترجمة نصية',
+                    'الفيديو مش عنده subtitles أو transcript — وده شرط أساسي عشان نقدر نترجمه.',
+                    '<strong>💡 جرب:</strong> فيديوهات تعليمية أو محاضرات أو يوتيوب كريتورز اللي بيضيفوا subtitles لفيديوهاتهم.'
+                );
+            } else if (type === 'too-long') {
+                showError(
+                    'too-long',
+                    'الفيديو ده طويل أوي',
+                    'الفيديو أطول من اللي الموديل يقدر يتعامل معاه في وقت واحد.',
+                    '<strong>💡 جرب:</strong> فيديوهات أقصر من 15 دقيقة للحصول على أفضل النتائج.'
+                );
+            } else {
+                showError(
+                    'general',
+                    'حدث خطأ أثناء المعالجة',
+                    'في مشكلة حصلت، ممكن تجرب مرة تانية أو تجرب فيديو تاني.',
+                    status ? '<strong>كود الخطأ:</strong> ' + status : ''
+                );
+            }
+            translateBtn.disabled = false;
+            translateBtn.textContent = '🔄 إعادة المحاولة';
+        }
+
+        // ── Main ─────────────────────────────────────────────────
+        async function processVideo() {
+            const url = videoInput.value.trim();
+            if (!url || !isValidYouTubeUrl(url)) return;
+
+            translateBtn.disabled = true;
+            translateBtn.textContent = '⏳ جاري المعالجة...';
+            progressSection.classList.add('active');
+            errorSection.classList.remove('active');
+            resultSection.classList.remove('active');
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 85) { progress += Math.random() * 3; updateProgress(Math.min(progress, 85)); }
+            }, 300);
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'MySecretKey': WEBHOOK_SECRET
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                clearInterval(progressInterval);
+                updateProgress(100);
+
+                // فشل من السيرفر
+                if (!response.ok) {
+                    let serverMsg = '';
+                    try { const j = await response.json(); serverMsg = j.message || j.error || JSON.stringify(j); }
+                    catch { serverMsg = await response.text().catch(() => ''); }
+                    handleErrorByType(classifyError(serverMsg, response.status), serverMsg, response.status);
+                    return;
+                }
+
+                // Binary audio مباشرة
+                if (contentType.includes('audio/') || contentType.includes('application/octet-stream')) {
+                    const blob = await response.blob();
+                    if (blob.size < 1000) {
+                        handleErrorByType('general', 'الملف الصوتي فارغ', 0);
+                        return;
+                    }
+                    currentAudioBlob = blob;
+                    currentAudioUrl  = URL.createObjectURL(blob);
+                    setTimeout(() => showResult(currentAudioUrl), 500);
+                    return;
+                }
+
+                // JSON فيه رابط
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.error || (data.message || '').toLowerCase().includes('error')) {
+                        const errMsg = data.error || data.message || '';
+                        handleErrorByType(classifyError(errMsg, response.status), errMsg, response.status);
+                        return;
+                    }
+                    const audioUrl = data.audioUrl || data.url || data.result ||
+                        data.audio_url || data.downloadUrl || data.fileUrl || data.output || data.link;
+                    if (audioUrl) {
+                        const audioResp = await fetch(audioUrl);
+                        const blob = await audioResp.blob();
+                        currentAudioBlob = blob;
+                        currentAudioUrl  = URL.createObjectURL(blob);
+                        setTimeout(() => showResult(currentAudioUrl), 500);
+                    } else {
+                        handleErrorByType('general', JSON.stringify(data), 0);
+                    }
+                    return;
+                }
+
+                // نوع غير معروف
+                const text = await response.text();
+                handleErrorByType(classifyError(text, response.status), text, response.status);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                handleErrorByType(classifyError(error.message, 0), error.message, 0);
+            } finally {
+                progressSection.classList.remove('active');
+                progressBar.style.width = '0%';
+                progressPercentage.textContent = '0%';
+            }
+        }
+
+        function updateProgress(value) {
+            progressBar.style.width = value + '%';
+            progressPercentage.textContent = Math.round(value) + '%';
+        }
+
+        function showResult(audioUrl) {
+            resultSection.classList.add('active');
+            audioPlayer.src = audioUrl;
+            audioPlayer.load();
+            audioPlayer.play().catch(() => {});
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ── Download ─────────────────────────────────────────────
+        async function downloadAudio() {
+            if (!currentAudioBlob) return;
+            const orig = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '⏳ جاري التحضير...';
+            downloadBtn.classList.add('downloading');
+            try {
+                const blobUrl = URL.createObjectURL(currentAudioBlob);
+                const a = document.createElement('a');
+                a.href = blobUrl; a.download = `VoxaTube-Arabic-${Date.now()}.mp3`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+                setTimeout(() => {
+                    downloadBtn.innerHTML = '<i class="fas fa-check"></i> تم التحميل';
+                    downloadBtn.classList.remove('downloading');
+                    setTimeout(() => { downloadBtn.innerHTML = orig; }, 2000);
+                }, 500);
+            } catch {
+                downloadBtn.innerHTML = '❌ فشل التحميل';
+                downloadBtn.classList.remove('downloading');
+                setTimeout(() => { downloadBtn.innerHTML = orig; }, 2000);
+            }
+        }
+
+        // ── Reset ─────────────────────────────────────────────────
+        function resetApp() {
+            if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+            currentAudioBlob = null; currentAudioUrl = '';
+            videoInput.value = '';
+            translateBtn.disabled = true;
+            translateBtn.textContent = '🚀 ابدأ الترجمة';
+            videoPreview.classList.remove('active');
+            youtubeIframe.src = '';
+            progressSection.classList.remove('active');
+            progressBar.style.width = '0%';
+            progressPercentage.textContent = '0%';
+            errorSection.classList.remove('active');
+            resultSection.classList.remove('active');
+            audioPlayer.src = ''; audioPlayer.pause();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
+
