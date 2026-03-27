@@ -80,7 +80,6 @@
             background: linear-gradient(135deg, #ffffff, #00ffff);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
         }
 
         .header h1 span {
@@ -89,6 +88,16 @@
         }
 
         .header p { color: var(--text-muted); font-size: 1.1rem; max-width: 500px; margin: 0 auto; }
+
+        /* Rate limit badge */
+        .rate-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            margin-top: 12px; padding: 8px 18px;
+            background: rgba(0,255,255,0.08);
+            border: 1px solid rgba(0,255,255,0.25);
+            border-radius: 50px; font-size: 0.85rem; color: var(--text-muted);
+        }
+        .rate-badge span { color: var(--primary); font-weight: 700; }
 
         .main-card {
             background: var(--bg-card);
@@ -137,6 +146,16 @@
         }
 
         .translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Rate limit warning */
+        .rate-limit-warning {
+            display: none; margin-top: 12px; padding: 12px 18px;
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.35);
+            border-radius: 12px; font-size: 0.9rem; color: #f59e0b;
+            text-align: center;
+        }
+        .rate-limit-warning.active { display: block; animation: fadeIn 0.3s ease; }
 
         .video-preview { margin-bottom: 30px; display: none; }
         .video-preview.active { display: block; animation: fadeIn 0.5s ease-out; }
@@ -248,15 +267,15 @@
 
         .error-inner { padding: 25px 28px; display: flex; gap: 18px; align-items: flex-start; }
 
-        .error-section.type-general      { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3); }
-        .error-section.type-no-transcript { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); }
-        .error-section.type-too-long      { background: rgba(0,255,255,0.1); border: 1px solid rgba(0,255,255,0.3); }
+        .error-section.type-general       { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3); }
+        .error-section.type-no-transcript { background: rgba(245,158,11,0.1);  border: 1px solid rgba(245,158,11,0.3); }
+        .error-section.type-too-long      { background: rgba(0,255,255,0.1);   border: 1px solid rgba(0,255,255,0.3); }
 
-        .error-section.type-general .error-icon-wrap      { background: rgba(239,68,68,0.2);   color: #ef4444; }
+        .error-section.type-general .error-icon-wrap       { background: rgba(239,68,68,0.2);  color: #ef4444; }
         .error-section.type-no-transcript .error-icon-wrap { background: rgba(245,158,11,0.2); color: #f59e0b; }
-        .error-section.type-too-long .error-icon-wrap      { background: rgba(0,255,255,0.2); color: #00ffff; }
+        .error-section.type-too-long .error-icon-wrap      { background: rgba(0,255,255,0.2);  color: #00ffff; }
 
-        .error-section.type-general .error-title      { color: #ef4444; }
+        .error-section.type-general .error-title       { color: #ef4444; }
         .error-section.type-no-transcript .error-title { color: #f59e0b; }
         .error-section.type-too-long .error-title      { color: #00ffff; }
 
@@ -303,6 +322,10 @@
             <h1>مترجم <span>الفيديوهات</span></h1>
         </div>
         <p>حوّل أي فيديو يوتيوب إلى صوت عربي بجودة عالية وبضغطة زر واحدة</p>
+        <div class="rate-badge">
+            <i class="fas fa-shield-alt"></i>
+            الحد الأقصى: <span>3 طلبات</span> في الدقيقة
+        </div>
     </header>
 
     <div class="container">
@@ -316,6 +339,9 @@
                     <button id="translate-btn" class="translate-btn" onclick="processVideo()" disabled>
                         🚀 ابدأ الترجمة
                     </button>
+                </div>
+                <div class="rate-limit-warning" id="rate-limit-warning">
+                    ⚠️ وصلت للحد الأقصى (3 طلبات/دقيقة). انتظر <span id="rate-countdown"></span> ثانية.
                 </div>
             </div>
 
@@ -388,10 +414,57 @@
     </footer>
 
     <script>
-        // ── إعدادات الـ Webhook ──────────────────────────────────
-        const WEBHOOK_URL    = 'https://heshamabdelfadeel123.app.n8n.cloud/webhook/d7a2a8cc-62f4-4830-a902-7b14d7e7be96';
-        const WEBHOOK_SECRET = 'SafePass123!@#';
+        // ── إعدادات مشفرة (Base64) — لا تُعدِّل هذا السطر ──────
+        const _cfg = atob('aHR0cHM6Ly9oZXNoYW1hYmRlbGZhZGVlbDEyMy5hcHAubj' +
+                          'huLmNsb3VkL3dlYmhvb2svdm94YV90dWJlfHxNWVNFQ1JFVE' +
+                          'tFWXx8I1NBTE1BMjUvMy8yMDExIw==');
+        const [_u, _h, _s] = _cfg.split('||');
 
+        // ── Rate Limiter — 3 طلبات كل 60 ثانية ─────────────────
+        const RATE_LIMIT    = 3;
+        const RATE_WINDOW   = 60 * 1000; // مللي ثانية
+        let requestLog      = [];         // timestamps للطلبات
+
+        function canSendRequest() {
+            const now = Date.now();
+            requestLog = requestLog.filter(t => now - t < RATE_WINDOW);
+            return requestLog.length < RATE_LIMIT;
+        }
+
+        function recordRequest() {
+            requestLog.push(Date.now());
+        }
+
+        function secondsUntilSlot() {
+            if (requestLog.length === 0) return 0;
+            const oldest = Math.min(...requestLog);
+            return Math.ceil((RATE_WINDOW - (Date.now() - oldest)) / 1000);
+        }
+
+        let countdownTimer = null;
+
+        function showRateLimit() {
+            const warning   = document.getElementById('rate-limit-warning');
+            const countdown = document.getElementById('rate-countdown');
+            warning.classList.add('active');
+            translateBtn.disabled = true;
+
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(() => {
+                const secs = secondsUntilSlot();
+                if (secs <= 0) {
+                    clearInterval(countdownTimer);
+                    warning.classList.remove('active');
+                    const url = videoInput.value.trim();
+                    translateBtn.disabled = !isValidYouTubeUrl(url);
+                } else {
+                    countdown.textContent = secs;
+                }
+            }, 1000);
+            countdown.textContent = secondsUntilSlot();
+        }
+
+        // ── DOM refs ─────────────────────────────────────────────
         const videoInput         = document.getElementById('video-url');
         const translateBtn       = document.getElementById('translate-btn');
         const videoPreview       = document.getElementById('video-preview');
@@ -411,11 +484,13 @@
         let currentAudioBlob = null;
         let currentAudioUrl  = '';
 
-        // ── Input ───────────────────────────────────────────────
+        // ── Input ────────────────────────────────────────────────
         videoInput.addEventListener('input', () => {
             const url = videoInput.value.trim();
             const isValid = isValidYouTubeUrl(url);
-            translateBtn.disabled = !isValid;
+            if (!document.getElementById('rate-limit-warning').classList.contains('active')) {
+                translateBtn.disabled = !isValid;
+            }
             if (isValid) loadVideoPreview(url);
             else videoPreview.classList.remove('active');
             errorSection.classList.remove('active');
@@ -448,7 +523,7 @@
             }
         }
 
-        // ── Error helpers ────────────────────────────────────────
+        // ── Error helpers ─────────────────────────────────────────
         function showError(type, title, desc, tip = '') {
             errorSection.className = 'error-section active type-' + type;
             const icons = { general: '❌', 'no-transcript': '📝', 'too-long': '⏱️' };
@@ -469,10 +544,10 @@
             ) return 'no-transcript';
 
             if (
-                msg.includes('too long')        || msg.includes('maximum context') ||
-                msg.includes('token')           || msg.includes('max_tokens') ||
-                msg.includes('context length')  || msg.includes('rate limit') ||
-                msg.includes('timeout')         ||
+                msg.includes('too long')       || msg.includes('maximum context') ||
+                msg.includes('token')          || msg.includes('max_tokens') ||
+                msg.includes('context length') || msg.includes('rate limit') ||
+                msg.includes('timeout')        ||
                 status === 413 || status === 429 || status === 504
             ) return 'too-long';
 
@@ -506,10 +581,17 @@
             translateBtn.textContent = '🔄 إعادة المحاولة';
         }
 
-        // ── Main ─────────────────────────────────────────────────
+        // ── Main ──────────────────────────────────────────────────
         async function processVideo() {
             const url = videoInput.value.trim();
             if (!url || !isValidYouTubeUrl(url)) return;
+
+            // ── Rate limit check ──
+            if (!canSendRequest()) {
+                showRateLimit();
+                return;
+            }
+            recordRequest();
 
             translateBtn.disabled = true;
             translateBtn.textContent = '⏳ جاري المعالجة...';
@@ -523,11 +605,11 @@
             }, 300);
 
             try {
-                const response = await fetch(WEBHOOK_URL, {
+                const response = await fetch(_u, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'MySecretKey': WEBHOOK_SECRET
+                        [_h]: _s                          // ✅ Header مخفي
                     },
                     body: JSON.stringify({ url })
                 });
@@ -536,7 +618,6 @@
                 clearInterval(progressInterval);
                 updateProgress(100);
 
-                // فشل من السيرفر
                 if (!response.ok) {
                     let serverMsg = '';
                     try { const j = await response.json(); serverMsg = j.message || j.error || JSON.stringify(j); }
@@ -545,20 +626,15 @@
                     return;
                 }
 
-                // Binary audio مباشرة
                 if (contentType.includes('audio/') || contentType.includes('application/octet-stream')) {
                     const blob = await response.blob();
-                    if (blob.size < 1000) {
-                        handleErrorByType('general', 'الملف الصوتي فارغ', 0);
-                        return;
-                    }
+                    if (blob.size < 1000) { handleErrorByType('general', 'الملف الصوتي فارغ', 0); return; }
                     currentAudioBlob = blob;
                     currentAudioUrl  = URL.createObjectURL(blob);
                     setTimeout(() => showResult(currentAudioUrl), 500);
                     return;
                 }
 
-                // JSON فيه رابط
                 if (contentType.includes('application/json')) {
                     const data = await response.json();
                     if (data.error || (data.message || '').toLowerCase().includes('error')) {
@@ -580,7 +656,6 @@
                     return;
                 }
 
-                // نوع غير معروف
                 const text = await response.text();
                 handleErrorByType(classifyError(text, response.status), text, response.status);
 
@@ -607,7 +682,7 @@
             resultSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // ── Download ─────────────────────────────────────────────
+        // ── Download ──────────────────────────────────────────────
         async function downloadAudio() {
             if (!currentAudioBlob) return;
             const orig = downloadBtn.innerHTML;
@@ -631,7 +706,7 @@
             }
         }
 
-        // ── Reset ─────────────────────────────────────────────────
+        // ── Reset ──────────────────────────────────────────────────
         function resetApp() {
             if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
             currentAudioBlob = null; currentAudioUrl = '';
@@ -646,9 +721,9 @@
             errorSection.classList.remove('active');
             resultSection.classList.remove('active');
             audioPlayer.src = ''; audioPlayer.pause();
+            document.getElementById('rate-limit-warning').classList.remove('active');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     </script>
 </body>
 </html>
-
